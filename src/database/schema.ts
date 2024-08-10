@@ -36,3 +36,15 @@ export interface SendMessageRequest {
   last_sent_at: number;
   fail_count: number;
 }
+
+export const DB_NAME = 'chat_core_db';
+export const DB_VERSION = 1;
+
+export const OBJECT_STORES = {
+  users: 'users',
+  conversations: 'conversations',
+  messages: 'messages',
+  conversationUsers: 'conversation_users',
+  draftMessages: 'draft_messages',
+  sendMessageRequests: 'send_message_requests',
+};
