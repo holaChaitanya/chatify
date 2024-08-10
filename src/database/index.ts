@@ -85,7 +85,20 @@ export class Database {
     return this.db!.get(OBJECT_STORES.messages as 'messages', id);
   }
 
+  async getMessagesByConversation(conversationId: number): Promise<Message[]> {
+    return this.db!.getAllFromIndex(OBJECT_STORES.messages as 'messages', 'by-conversation', conversationId);
+  }
 
+  async updateMessageStatus(id: number, status: Message['status']): Promise<void> {
+    const tx = this.db!.transaction(OBJECT_STORES.messages as 'messages', 'readwrite');
+    const store = tx.objectStore(OBJECT_STORES.messages as 'messages');
+    const message = await store.get(id);
+    if (message) {
+      message.status = status;
+      await store.put(message);
+    }
+    await tx.done;
+  }
 
   async addConversationUser(conversationUser: ConversationUser): Promise<void> {
     await this.db!.add(OBJECT_STORES.conversationUsers as 'conversation_users', conversationUser);
