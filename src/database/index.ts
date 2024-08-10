@@ -158,6 +158,63 @@ export class Database {
   async getAllSendMessageRequests(): Promise<SendMessageRequest[]> {
     return this.db!.getAll(OBJECT_STORES.sendMessageRequests as 'send_message_requests');
   }
+
+  async transaction<T>(
+    callback: (tx: any) => Promise<T>
+  ): Promise<T> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    const tx = this.db.transaction(Object.values(OBJECT_STORES) as any, 'readwrite');
+    try {
+      const result = await callback(tx);
+      await tx.done;
+      return result;
+    } catch (error) {
+      tx.abort();
+      throw error;
+    }
+  }
+
+  async updateMessage(id: number, updates: Partial<Message>): Promise<void> {
+    return this.transaction(async (tx) => {
+      const store = tx.objectStore(OBJECT_STORES.messages as 'messages');
+      const message = await store.get(id);
+      if (message) {
+        Object.assign(message, updates);
+        await store.put(message);
+      }
+    });
+  }
+
+  async updateConversation(id: number, updates: Partial<Conversation>): Promise<void> {
+    return this.transaction(async (tx) => {
+      const store = tx.objectStore(OBJECT_STORES.conversations as 'conversations');
+      const conversation = await store.get(id);
+      if (conversation) {
+        Object.assign(conversation, updates);
+        await store.put(conversation);
+      }
+    });
+  }
+
+  async updateUser(id: number, updates: Partial<User>): Promise<void> {
+    return this.transaction(async (tx) => {
+      const store = tx.objectStore(OBJECT_STORES.users as 'users');
+      const user = await store.get(id);
+      if (user) {
+        Object.assign(user, updates);
+        await store.put(user);
+      }
+    });
+  }
+
+  async setLastSyncTimestamp(timestamp: number): Promise<void> {
+    return this.transaction(async (tx) => {
+      await tx.objectStore('app_metadata').put({ key: 'lastSyncTimestamp', value: timestamp });
+    });
+  }
 }
 
 export const database = new Database();

@@ -24,16 +24,22 @@ export class DataSyncer {
   private setupSocketListeners(): void {
     this.socket.on('connect', () => {
       console.log('Connected to server');
+      this.socket.emit('sync', { lastUpdateTimestamp: this.getLastUpdateTimestamp() });
     });
 
     this.socket.on('message_sent', this.handleMessageSent.bind(this));
     this.socket.on('message_delivered', this.handleMessageDelivered.bind(this));
     this.socket.on('message_failed', this.handleMessageFailed.bind(this));
     this.socket.on('incoming_message', this.handleIncomingMessage.bind(this));
+    this.socket.on('sync', this.handleSync.bind(this));
   }
 
   private setupEventListeners(): void {
     this.eventEmitter.on('sendMessage', this.handleSendMessage.bind(this));
+  }
+
+  private getLastUpdateTimestamp(): number {
+    return 0;
   }
 
   private async handleMessageSent(data: { messageId: number }): Promise<void> {
@@ -61,6 +67,53 @@ export class DataSyncer {
   private async handleIncomingMessage(message: Message): Promise<void> {
     const messageId = await database.addMessage(message);
     this.eventEmitter.emit('incomingMessage', messageId);
+  }
+
+  private async handleSync(data: { messages: Message[], conversations: any[], users: any[] }): Promise<void> {
+    console.log('Sync data received:', data);
+
+    try {
+      await database.transaction(async (tx) => {
+        // Update messages
+        for (const message of data.messages) {
+          const existingMessage = await tx.getMessage(message.id);
+          if (existingMessage) {
+            await tx.updateMessage(message.id, message);
+          } else {
+            await tx.addMessage(message);
+          }
+        }
+
+        // Update conversations
+        for (const conversation of data.conversations) {
+          const existingConversation = await tx.getConversation(conversation.id);
+          if (existingConversation) {
+            await tx.updateConversation(conversation.id, conversation);
+          } else {
+            await tx.addConversation(conversation);
+          }
+        }
+
+        // Update users
+        for (const user of data.users) {
+          const existingUser = await tx.getUser(user.id);
+          if (existingUser) {
+            await tx.updateUser(user.id, user);
+          } else {
+            await tx.addUser(user);
+          }
+        }
+
+        // Update the last sync timestamp
+        await tx.setLastSyncTimestamp(Date.now());
+      });
+
+      console.log('Sync completed successfully');
+      this.eventEmitter.emit('syncCompleted');
+    } catch (error) {
+      console.error('Error during sync:', error);
+      this.eventEmitter.emit('syncFailed', error);
+    }
   }
 
   private async handleSendMessage(message: Message): Promise<void> {
