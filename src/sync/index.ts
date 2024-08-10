@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { database } from '../database';
-import { Message } from '../database/schema';
+import { Message, Conversation, User } from '../database/schema';
 import { EventEmitter } from '../events';
 import { MessageScheduler } from './messageScheduler';
 
@@ -24,7 +24,7 @@ export class DataSyncer {
   private setupSocketListeners(): void {
     this.socket.on('connect', () => {
       console.log('Connected to server');
-      this.socket.emit('sync', { lastUpdateTimestamp: this.getLastUpdateTimestamp() });
+      this.requestSync();
     });
 
     this.socket.on('message_sent', this.handleMessageSent.bind(this));
@@ -38,7 +38,12 @@ export class DataSyncer {
     this.eventEmitter.on('sendMessage', this.handleSendMessage.bind(this));
   }
 
-  private getLastUpdateTimestamp(): number {
+  private requestSync(): void {
+    const lastSyncTimestamp = this.getLastSyncTimestamp();
+    this.socket.emit('request_sync', { lastSyncTimestamp });
+  }
+
+  private getLastSyncTimestamp(): number {
     return 0;
   }
 
@@ -69,7 +74,7 @@ export class DataSyncer {
     this.eventEmitter.emit('incomingMessage', messageId);
   }
 
-  private async handleSync(data: { messages: Message[], conversations: any[], users: any[] }): Promise<void> {
+  private async handleSync(data: { messages: Message[], conversations: Conversation[], users: User[] }): Promise<void> {
     console.log('Sync data received:', data);
 
     try {
