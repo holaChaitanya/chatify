@@ -1,8 +1,8 @@
 {
   "name": "chatify",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "a headless chat client for the browser, with core functionality for sending and receiving messages, syncing data with a server, and persisting data to IndexedDB, retrying failed messages, and more",
+  "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
