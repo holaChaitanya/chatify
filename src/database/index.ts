@@ -28,6 +28,7 @@ interface ChatDBSchema extends DBSchema {
   send_message_requests: {
     key: number;
     value: SendMessageRequest;
+    indexes: { 'by-message': number };
   };
 }
 
@@ -54,7 +55,11 @@ export class Database {
             }
             if (storeName === 'draft_messages') {
               // @ts-ignore
-              store.createIndex('by-conversation', 'conversation_id');
+              store.createIndex('by-conversation', 'conversation_id', { unique: true });
+            }
+            if (storeName === 'send_message_requests') {
+              // @ts-ignore
+              store.createIndex('by-message', 'message_id');
             }
           }
         }
@@ -145,27 +150,40 @@ export class Database {
     await tx.done;
   }
 
-  async addSendMessageRequest(request: Omit<SendMessageRequest, 'id'>): Promise<number> {
-    return this.db!.add(OBJECT_STORES.sendMessageRequests as 'send_message_requests', request as SendMessageRequest);
+  async upsertSendMessageRequest(request: Partial<SendMessageRequest> & { message_id: number }): Promise<number> {
+    return this.transaction(async (tx) => {
+      const store = tx.objectStore(OBJECT_STORES.sendMessageRequests as 'send_message_requests');
+      const existingRequests = await store.index('by-message').getAll(request.message_id);
+
+      if (existingRequests.length > 0) {
+        const existingRequest = existingRequests[0];
+        Object.assign(existingRequest, request);
+        await store.put(existingRequest);
+        return existingRequest.id;
+      } else {
+        const newRequest = {
+          ...request,
+          status: request.status || 'pending',
+          last_sent_at: request.last_sent_at || Date.now(),
+          fail_count: request.fail_count || 0,
+        };
+        return store.add(newRequest);
+      }
+    });
   }
 
-  async getSendMessageRequest(id: number): Promise<SendMessageRequest | undefined> {
-    return this.db!.get(OBJECT_STORES.sendMessageRequests as 'send_message_requests', id);
+  async getSendMessageRequest(messageId: number): Promise<SendMessageRequest | undefined> {
+    return this.db!.getFromIndex(OBJECT_STORES.sendMessageRequests as 'send_message_requests', 'by-message', messageId);
   }
 
-  async updateSendMessageRequest(id: number, updates: Partial<SendMessageRequest>): Promise<void> {
+  async deleteSendMessageRequest(messageId: number): Promise<void> {
     const tx = this.db!.transaction(OBJECT_STORES.sendMessageRequests as 'send_message_requests', 'readwrite');
     const store = tx.objectStore(OBJECT_STORES.sendMessageRequests as 'send_message_requests');
-    const request = await store.get(id);
-    if (request) {
-      Object.assign(request, updates);
-      await store.put(request);
+    const existingRequest = await store.index('by-message').get(messageId);
+    if (existingRequest) {
+      await store.delete(existingRequest.id);
     }
     await tx.done;
-  }
-
-  async deleteSendMessageRequest(id: number): Promise<void> {
-    await this.db!.delete(OBJECT_STORES.sendMessageRequests as 'send_message_requests', id);
   }
 
   async getAllSendMessageRequests(): Promise<SendMessageRequest[]> {

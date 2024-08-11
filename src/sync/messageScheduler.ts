@@ -50,7 +50,7 @@ export class MessageScheduler {
 
   private async sendMessage(task: SendMessageRequest): Promise<void> {
     try {
-      await database.updateSendMessageRequest(task.id, { status: 'in_flight', last_sent_at: Date.now() });
+      await database.upsertSendMessageRequest({ ...task, status: 'in_flight', last_sent_at: Date.now() });
       const message = await database.getMessage(task.message_id);
       if (message) {
         await database.upsertMessage({ ...message, status: 'sending' });
@@ -58,7 +58,7 @@ export class MessageScheduler {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      await database.updateSendMessageRequest(task.id, { status: 'fail', fail_count: (task.fail_count || 0) + 1 });
+      await database.upsertSendMessageRequest({ ...task, status: 'fail', fail_count: (task.fail_count || 0) + 1 });
       this.taskQueue.push(task);
     }
   }
@@ -76,7 +76,7 @@ export class MessageScheduler {
       last_sent_at: Date.now(),
       fail_count: 0,
     };
-    const requestId = await database.addSendMessageRequest(request);
+    const requestId = await database.upsertSendMessageRequest(request);
     const newRequest = await database.getSendMessageRequest(requestId);
     if (newRequest) {
       this.taskQueue.push(newRequest);

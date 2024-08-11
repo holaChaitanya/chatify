@@ -61,9 +61,10 @@ export class DataSyncer {
   private async handleMessageFailed(data: { messageId: number }): Promise<void> {
     const request = await database.getSendMessageRequest(data.messageId);
     if (request) {
-      await database.updateSendMessageRequest(request.id, {
+      await database.upsertSendMessageRequest({
+        ...request,
         status: 'fail',
-        fail_count: request.fail_count + 1,
+        fail_count: (request.fail_count || 0) + 1,
       });
     }
     this.eventEmitter.emit('messageFailed', data.messageId);
