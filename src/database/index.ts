@@ -127,10 +127,6 @@ export class Database {
     return this.db!.getAllFromIndex(OBJECT_STORES.messages as 'messages', 'by-conversation', conversationId);
   }
 
-  async addConversationUser(conversationUser: ConversationUser): Promise<void> {
-    await this.db!.add(OBJECT_STORES.conversationUsers as 'conversation_users', conversationUser);
-  }
-
   async getConversationUsers(conversationId: number): Promise<ConversationUser[]> {
     return this.db!.getAllFromIndex(OBJECT_STORES.conversationUsers as 'conversation_users', 'by-conversation', conversationId);
   }
