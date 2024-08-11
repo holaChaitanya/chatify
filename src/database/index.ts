@@ -75,10 +75,6 @@ export class Database {
     });
   }
 
-  async addUser(user: Omit<User, 'id'>): Promise<number> {
-    return this.db!.add(OBJECT_STORES.users as 'users', user as User);
-  }
-
   async getUser(id: number): Promise<User | undefined> {
     return this.db!.get(OBJECT_STORES.users as 'users', id);
   }
