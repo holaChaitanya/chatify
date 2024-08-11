@@ -53,6 +53,7 @@ export class MessageScheduler {
       await database.updateSendMessageRequest(task.id, { status: 'in_flight', last_sent_at: Date.now() });
       const message = await database.getMessage(task.message_id);
       if (message) {
+        await database.upsertMessage({ ...message, status: 'sending' });
         this.eventEmitter.emit('sendMessage', message);
       }
     } catch (error) {

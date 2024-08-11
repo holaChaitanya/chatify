@@ -77,8 +77,20 @@ export class Database {
     return this.db!.getAll(OBJECT_STORES.conversations as 'conversations');
   }
 
-  async addMessage(message: Omit<Message, 'id'>): Promise<number> {
-    return this.db!.add(OBJECT_STORES.messages as 'messages', message as Message);
+  async upsertMessage(message: Partial<Message> & { id?: number }): Promise<number> {
+    return this.transaction(async (tx) => {
+      const store = tx.objectStore(OBJECT_STORES.messages as 'messages');
+      if (message.id) {
+        const existingMessage = await store.get(message.id);
+        if (existingMessage) {
+          Object.assign(existingMessage, message);
+          await store.put(existingMessage);
+          return existingMessage.id;
+        }
+      }
+      const newMessage = { ...message, created_at: message.created_at || Date.now() };
+      return store.add(newMessage);
+    });
   }
 
   async getMessage(id: number): Promise<Message | undefined> {
@@ -87,17 +99,6 @@ export class Database {
 
   async getMessagesByConversation(conversationId: number): Promise<Message[]> {
     return this.db!.getAllFromIndex(OBJECT_STORES.messages as 'messages', 'by-conversation', conversationId);
-  }
-
-  async updateMessageStatus(id: number, status: Message['status']): Promise<void> {
-    const tx = this.db!.transaction(OBJECT_STORES.messages as 'messages', 'readwrite');
-    const store = tx.objectStore(OBJECT_STORES.messages as 'messages');
-    const message = await store.get(id);
-    if (message) {
-      message.status = status;
-      await store.put(message);
-    }
-    await tx.done;
   }
 
   async addConversationUser(conversationUser: ConversationUser): Promise<void> {
@@ -175,17 +176,6 @@ export class Database {
       tx.abort();
       throw error;
     }
-  }
-
-  async updateMessage(id: number, updates: Partial<Message>): Promise<void> {
-    return this.transaction(async (tx) => {
-      const store = tx.objectStore(OBJECT_STORES.messages as 'messages');
-      const message = await store.get(id);
-      if (message) {
-        Object.assign(message, updates);
-        await store.put(message);
-      }
-    });
   }
 
   async updateConversation(id: number, updates: Partial<Conversation>): Promise<void> {

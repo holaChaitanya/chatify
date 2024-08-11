@@ -48,13 +48,13 @@ export class DataSyncer {
   }
 
   private async handleMessageSent(data: { messageId: number }): Promise<void> {
-    await database.updateMessageStatus(data.messageId, 'sent');
+    await database.upsertMessage({ id: data.messageId, status: 'sent' });
     await database.deleteSendMessageRequest(data.messageId);
     this.eventEmitter.emit('messageSent', data.messageId);
   }
 
   private async handleMessageDelivered(data: { messageId: number }): Promise<void> {
-    await database.updateMessageStatus(data.messageId, 'delivered');
+    await database.upsertMessage({ id: data.messageId, status: 'delivered' });
     this.eventEmitter.emit('messageDelivered', data.messageId);
   }
 
@@ -70,7 +70,7 @@ export class DataSyncer {
   }
 
   private async handleIncomingMessage(message: Message): Promise<void> {
-    const messageId = await database.addMessage(message);
+    const messageId = await database.upsertMessage(message);
     this.eventEmitter.emit('incomingMessage', messageId);
   }
 
@@ -126,7 +126,7 @@ export class DataSyncer {
   }
 
   async sendMessage(message: Omit<Message, 'id' | 'status' | 'created_at'>): Promise<number> {
-    const messageId = await database.addMessage({
+    const messageId = await database.upsertMessage({
       ...message,
       status: 'sending',
       created_at: Date.now(),
