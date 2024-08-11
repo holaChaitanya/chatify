@@ -3,6 +3,8 @@
 
 Chatify is a browser-based headless chat client offering core functionality for messaging, data syncing, and offline persistence.
 
+![image](https://github.com/user-attachments/assets/28fa32dd-f990-48a4-9bf6-823467983dfb)
+
 Architecture
 
 Core Components
