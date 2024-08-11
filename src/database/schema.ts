@@ -37,6 +37,11 @@ export interface SendMessageRequest {
   fail_count: number;
 }
 
+export interface AppMetadata {
+  key: string;
+  value: any;
+}
+
 export const DB_NAME = 'chat_core_db';
 export const DB_VERSION = 1;
 
@@ -47,4 +52,5 @@ export const OBJECT_STORES = {
   conversationUsers: 'conversation_users',
   draftMessages: 'draft_messages',
   sendMessageRequests: 'send_message_requests',
+  appMetadata: 'app_metadata',
 };
