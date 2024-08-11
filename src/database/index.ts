@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { DB_NAME, DB_VERSION, OBJECT_STORES, User, Conversation, Message, ConversationUser, DraftMessage, SendMessageRequest } from './schema';
+import { DB_NAME, DB_VERSION, OBJECT_STORES, User, Conversation, Message, ConversationUser, DraftMessage, SendMessageRequest, AppMetadata } from './schema';
 
 interface ChatDBSchema extends DBSchema {
   users: {
@@ -29,6 +29,10 @@ interface ChatDBSchema extends DBSchema {
     key: number;
     value: SendMessageRequest;
     indexes: { 'by-message': number };
+  };
+  app_metadata: {
+    key: string;
+    value: AppMetadata;
   };
 }
 
@@ -60,6 +64,10 @@ export class Database {
             if (storeName === 'send_message_requests') {
               // @ts-ignore
               store.createIndex('by-message', 'message_id');
+            }
+            if (storeName === 'app_metadata') {
+              // @ts-ignore
+              store.createIndex('key', 'key');
             }
           }
         }
@@ -232,8 +240,16 @@ export class Database {
 
   async setLastSyncTimestamp(timestamp: number): Promise<void> {
     return this.transaction(async (tx) => {
-      await tx.objectStore('app_metadata').put({ key: 'lastSyncTimestamp', value: timestamp });
+      await tx.objectStore(OBJECT_STORES.appMetadata as 'app_metadata').put({ key: 'lastSyncTimestamp', value: timestamp });
     });
+  }
+
+  async getAppMetadata(key: string): Promise<AppMetadata | undefined> {
+    return this.db!.get(OBJECT_STORES.appMetadata as 'app_metadata', key);
+  }
+
+  async setAppMetadata(key: string, value: any): Promise<void> {
+    await this.db!.put(OBJECT_STORES.appMetadata as 'app_metadata', { key, value });
   }
 }
 

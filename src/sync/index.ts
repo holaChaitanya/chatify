@@ -32,19 +32,26 @@ export class DataSyncer {
     this.socket.on('message_failed', this.handleMessageFailed.bind(this));
     this.socket.on('incoming_message', this.handleIncomingMessage.bind(this));
     this.socket.on('sync', this.handleSync.bind(this));
+    this.socket.on('sync_response', this.handleSyncResponse.bind(this));
   }
 
   private setupEventListeners(): void {
     this.eventEmitter.on('sendMessage', this.handleSendMessage.bind(this));
   }
 
-  private requestSync(): void {
-    const lastSyncTimestamp = this.getLastSyncTimestamp();
+  private async requestSync(): Promise<void> {
+    const lastSyncTimestamp = await this.getLastSyncTimestamp();
     this.socket.emit('request_sync', { lastSyncTimestamp });
   }
 
-  private getLastSyncTimestamp(): number {
-    return 0;
+  private async getLastSyncTimestamp(): Promise<number> {
+    try {
+      const metadata = await database.getAppMetadata('lastSyncTimestamp');
+      return metadata ? metadata.value : 0;
+    } catch (error) {
+      console.error('Error getting last sync timestamp:', error);
+      return 0;
+    }
   }
 
   private async handleMessageSent(data: { messageId: number }): Promise<void> {
@@ -111,7 +118,7 @@ export class DataSyncer {
         }
 
         // Update the last sync timestamp
-        await tx.setLastSyncTimestamp(Date.now());
+        await database.setAppMetadata('lastSyncTimestamp', Date.now());
       });
 
       console.log('Sync completed successfully');
@@ -120,6 +127,10 @@ export class DataSyncer {
       console.error('Error during sync:', error);
       this.eventEmitter.emit('syncFailed', error);
     }
+  }
+
+  private async handleSyncResponse(data: { messages: Message[], conversations: Conversation[], users: User[] }): Promise<void> {
+    await this.handleSync(data);
   }
 
   private async handleSendMessage(message: Message): Promise<void> {
