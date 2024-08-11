@@ -83,8 +83,20 @@ export class Database {
     return this.db!.get(OBJECT_STORES.users as 'users', id);
   }
 
-  async addConversation(conversation: Omit<Conversation, 'id'>): Promise<number> {
-    return this.db!.add(OBJECT_STORES.conversations as 'conversations', conversation as Conversation);
+  async upsertConversation(conversation: Partial<Conversation> & { id?: number }): Promise<number> {
+    return this.transaction(async (tx) => {
+      const store = tx.objectStore(OBJECT_STORES.conversations as 'conversations');
+      if (conversation.id) {
+        const existingConversation = await store.get(conversation.id);
+        if (existingConversation) {
+          Object.assign(existingConversation, conversation);
+          await store.put(existingConversation);
+          return existingConversation.id;
+        }
+      }
+      const newConversation = { ...conversation, created_at: Date.now() };
+      return store.add(newConversation);
+    });
   }
 
   async getConversation(id: number): Promise<Conversation | undefined> {
@@ -214,17 +226,6 @@ export class Database {
       tx.abort();
       throw error;
     }
-  }
-
-  async updateConversation(id: number, updates: Partial<Conversation>): Promise<void> {
-    return this.transaction(async (tx) => {
-      const store = tx.objectStore(OBJECT_STORES.conversations as 'conversations');
-      const conversation = await store.get(id);
-      if (conversation) {
-        Object.assign(conversation, updates);
-        await store.put(conversation);
-      }
-    });
   }
 
   async updateUser(id: number, updates: Partial<User>): Promise<void> {

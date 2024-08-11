@@ -83,38 +83,21 @@ export class DataSyncer {
   }
 
   private async handleSync(data: { messages: Message[], conversations: Conversation[], users: User[] }): Promise<void> {
-    console.log('Sync data received:', data);
-
     try {
       await database.transaction(async (tx) => {
         // Update messages
         for (const message of data.messages) {
-          const existingMessage = await tx.getMessage(message.id);
-          if (existingMessage) {
-            await tx.updateMessage(message.id, message);
-          } else {
-            await tx.addMessage(message);
-          }
+          await tx.upsertMessage(message);
         }
 
         // Update conversations
         for (const conversation of data.conversations) {
-          const existingConversation = await tx.getConversation(conversation.id);
-          if (existingConversation) {
-            await tx.updateConversation(conversation.id, conversation);
-          } else {
-            await tx.addConversation(conversation);
-          }
+          await tx.upsertConversation(conversation);
         }
 
         // Update users
         for (const user of data.users) {
-          const existingUser = await tx.getUser(user.id);
-          if (existingUser) {
-            await tx.updateUser(user.id, user);
-          } else {
-            await tx.addUser(user);
-          }
+          await tx.updateUser(user.id, user);
         }
 
         // Update the last sync timestamp
