@@ -42,13 +42,8 @@ export class ChatCore {
     return database.getUser(userId);
   }
 
-  async saveDraftMessage(draftMessage: Omit<DraftMessage, 'id'>): Promise<void> {
-    const existingDraft = await database.getDraftMessage(draftMessage.conversation_id);
-    if (existingDraft) {
-      await database.updateDraftMessage(existingDraft.id, draftMessage.content);
-    } else {
-      await database.addDraftMessage(draftMessage);
-    }
+  async saveDraftMessage(draftMessage: Omit<DraftMessage, 'id' | 'created_at'>): Promise<void> {
+    await database.upsertDraftMessage(draftMessage);
   }
 
   async getDraftMessage(conversationId: number): Promise<DraftMessage | undefined> {

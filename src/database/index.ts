@@ -23,6 +23,7 @@ interface ChatDBSchema extends DBSchema {
   draft_messages: {
     key: number;
     value: DraftMessage;
+    indexes: { 'by-conversation': number };
   };
   send_message_requests: {
     key: number;
@@ -50,6 +51,10 @@ export class Database {
               store.createIndex('by-conversation', 'conversation_id');
               // @ts-ignore
               store.createIndex('by-user', 'user_id');
+            }
+            if (storeName === 'draft_messages') {
+              // @ts-ignore
+              store.createIndex('by-conversation', 'conversation_id');
             }
           }
         }
@@ -109,28 +114,35 @@ export class Database {
     return this.db!.getAllFromIndex(OBJECT_STORES.conversationUsers as 'conversation_users', 'by-conversation', conversationId);
   }
 
-  async addDraftMessage(draftMessage: Omit<DraftMessage, 'id'>): Promise<number> {
-    return this.db!.add(OBJECT_STORES.draftMessages as 'draft_messages', draftMessage as DraftMessage);
+  async upsertDraftMessage(draftMessage: Partial<DraftMessage> & { conversation_id: number }): Promise<number> {
+    return this.transaction(async (tx) => {
+      const store = tx.objectStore(OBJECT_STORES.draftMessages as 'draft_messages');
+      const existingDrafts = await store.index('by-conversation').getAll(draftMessage.conversation_id);
+
+      if (existingDrafts.length > 0) {
+        const existingDraft = existingDrafts[0];
+        Object.assign(existingDraft, draftMessage);
+        await store.put(existingDraft);
+        return existingDraft.id;
+      } else {
+        const newDraft = { ...draftMessage, created_at: Date.now() };
+        return store.add(newDraft);
+      }
+    });
   }
 
   async getDraftMessage(conversationId: number): Promise<DraftMessage | undefined> {
-    const draftMessages = await this.db!.getAll(OBJECT_STORES.draftMessages as 'draft_messages');
-    return draftMessages.find(dm => dm.conversation_id === conversationId);
+    return this.db!.getFromIndex(OBJECT_STORES.draftMessages as 'draft_messages', 'by-conversation', conversationId);
   }
 
-  async updateDraftMessage(id: number, content: string): Promise<void> {
+  async deleteDraftMessage(conversationId: number): Promise<void> {
     const tx = this.db!.transaction(OBJECT_STORES.draftMessages as 'draft_messages', 'readwrite');
     const store = tx.objectStore(OBJECT_STORES.draftMessages as 'draft_messages');
-    const draftMessage = await store.get(id);
-    if (draftMessage) {
-      draftMessage.content = content;
-      await store.put(draftMessage);
+    const existingDraft = await store.index('by-conversation').get(conversationId);
+    if (existingDraft) {
+      await store.delete(existingDraft.id);
     }
     await tx.done;
-  }
-
-  async deleteDraftMessage(id: number): Promise<void> {
-    await this.db!.delete(OBJECT_STORES.draftMessages as 'draft_messages', id);
   }
 
   async addSendMessageRequest(request: Omit<SendMessageRequest, 'id'>): Promise<number> {
