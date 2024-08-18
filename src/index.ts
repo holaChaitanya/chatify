@@ -53,6 +53,10 @@ export class ChatCore {
   debouncedSaveDraftMessage = debounce(this.saveDraftMessage.bind(this), 300);
 
   throttledSaveDraftMessage = throttle(this.saveDraftMessage.bind(this), 1000);
+
+  destroy(): void {
+    this.eventEmitter.removeAllListeners();
+  }
 }
 
 export { User, Conversation, Message, DraftMessage };
