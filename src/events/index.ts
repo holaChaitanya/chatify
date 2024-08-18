@@ -19,4 +19,18 @@ export class EventEmitter {
     if (!this.events[event]) return;
     this.events[event].forEach(handler => handler(...args));
   }
+
+  removeAllListeners(event?: string): void {
+    if (event) {
+      if (this.events[event]) {
+        this.events[event] = [];
+      }
+    } else {
+      for (const key in this.events) {
+        if (Object.prototype.hasOwnProperty.call(this.events, key)) {
+          this.events[key] = [];
+        }
+      }
+    }
+  }
 }
