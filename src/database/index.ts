@@ -254,6 +254,18 @@ export class Database {
     await this.db!.put(OBJECT_STORES.appMetadata as 'app_metadata', { key, value });
   }
 
+  async clearAllData(): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    const tx = this.db.transaction(Object.values(OBJECT_STORES) as any, 'readwrite');
+    for (const storeName of Object.values(OBJECT_STORES)) {
+      await tx.objectStore(storeName).clear();
+    }
+    await tx.done;
+  }
+
   close(): void {
     if (this.db) {
       this.db.close();

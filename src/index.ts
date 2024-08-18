@@ -50,6 +50,11 @@ export class ChatCore {
     return database.getDraftMessage(conversationId);
   }
 
+  async clearAllData(): Promise<void> {
+    await database.clearAllData();
+    // this.eventEmitter.emit('dataCleared');
+  }
+
   debouncedSaveDraftMessage = debounce(this.saveDraftMessage.bind(this), 300);
 
   throttledSaveDraftMessage = throttle(this.saveDraftMessage.bind(this), 1000);
