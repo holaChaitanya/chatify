@@ -203,21 +203,30 @@ export class Database {
   }
 
   async transaction<T>(
-    callback: (tx: any) => Promise<T>
+    callback: (tx: any) => Promise<T>,
+    maxRetries: number = 3
   ): Promise<T> {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
-    const tx = this.db.transaction(Object.values(OBJECT_STORES) as any, 'readwrite');
-    try {
-      const result = await callback(tx);
-      await tx.done;
-      return result;
-    } catch (error) {
-      tx.abort();
-      throw error;
+    let retries = 0;
+    while (retries < maxRetries) {
+      const tx = this.db.transaction(Object.values(OBJECT_STORES) as any, 'readwrite');
+      try {
+        const result = await callback(tx);
+        await tx.done;
+        return result;
+      } catch (error) {
+        tx.abort();
+        retries++;
+        if (retries >= maxRetries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, retries)));
+      }
     }
+    throw new Error('Transaction failed after max retries');
   }
 
   async updateUser(id: number, updates: Partial<User>): Promise<void> {
