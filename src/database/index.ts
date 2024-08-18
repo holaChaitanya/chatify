@@ -253,6 +253,13 @@ export class Database {
   async setAppMetadata(key: string, value: any): Promise<void> {
     await this.db!.put(OBJECT_STORES.appMetadata as 'app_metadata', { key, value });
   }
+
+  close(): void {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+  }
 }
 
 export const database = new Database();
