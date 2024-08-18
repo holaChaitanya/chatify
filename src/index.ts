@@ -56,6 +56,14 @@ export class ChatCore {
 
   destroy(): void {
     this.eventEmitter.removeAllListeners();
+    this.dataSyncer.destroy();
+
+    if (this.debouncedSaveDraftMessage.cancel) {
+      this.debouncedSaveDraftMessage.cancel();
+    }
+    if (this.throttledSaveDraftMessage.cancel) {
+      this.throttledSaveDraftMessage.cancel();
+    }
   }
 }
 

@@ -6,6 +6,7 @@ export class MessageScheduler {
   private taskQueue: SendMessageRequest[] = [];
   private isProcessing = false;
   private eventEmitter: EventEmitter;
+  private isDestroyed = false;
 
   constructor(eventEmitter: EventEmitter) {
     this.eventEmitter = eventEmitter;
@@ -29,6 +30,7 @@ export class MessageScheduler {
   }
 
   private async processNextTask(): Promise<void> {
+    if (this.isDestroyed) return;
     if (this.taskQueue.length === 0) {
       this.isProcessing = false;
       return;
@@ -82,5 +84,12 @@ export class MessageScheduler {
       this.taskQueue.push(newRequest);
       this.startProcessing();
     }
+  }
+
+  destroy(): void {
+    this.isDestroyed = true;
+    this.taskQueue = [];
+    this.isProcessing = false;
+    this.eventEmitter.removeAllListeners();
   }
 }

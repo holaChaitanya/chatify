@@ -129,4 +129,10 @@ export class DataSyncer {
     await this.messageScheduler.addTask(messageId);
     return messageId;
   }
+
+  destroy(): void {
+    this.socket.removeAllListeners();
+    this.socket.disconnect();
+    this.messageScheduler.destroy();
+  }
 }
