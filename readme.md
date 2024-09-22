@@ -24,3 +24,11 @@ Key Functionalities
 5. Draft message management
 
 
+Scope of Improvements -
+1. Integrate BroadcastChannel APIs to communicate changes made to Indexed DB on a real-time basis to other tabs
+2. Detection of when the application goes offline - I'm a bit confused whether this logic should be a part of the project or it should be exposed to the consumer using an API
+3. Add some form of visualisation or sandbox env, where people can get an understanding how does everything work
+4. Long polling support as a fallback for when the socket connection isn't getting established
+5. Ability to use REST endpoint to send a message as POST requests instead of using sockets
+
+
